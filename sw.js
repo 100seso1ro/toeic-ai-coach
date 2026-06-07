@@ -1,9 +1,9 @@
 const CACHE = "toeic-ai-coach-v1";
 const ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/icon.svg"
+  "./",
+  "index.html",
+  "manifest.webmanifest",
+  "icon.svg"
 ];
 
 self.addEventListener("install", event => {
@@ -28,7 +28,7 @@ self.addEventListener("fetch", event => {
         const copy = response.clone();
         caches.open(CACHE).then(cache => cache.put(event.request, copy));
         return response;
-      }).catch(() => caches.match("/index.html"))
+      }).catch(() => caches.match("index.html"))
     )
   );
 });

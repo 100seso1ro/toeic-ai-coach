@@ -2,15 +2,15 @@
   "name": "TOEIC AI Coach",
   "short_name": "TOEIC Coach",
   "description": "450点から800点を目指すTOEIC弱点分析学習アプリ",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f7f8fa",
   "theme_color": "#f7f8fa",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
