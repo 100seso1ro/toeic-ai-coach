@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TOEIC AI Coach">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <title>TOEIC AI Coach</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --ink: #17201d;
+      --muted: #60706b;
+      --line: #dfe6e3;
+      --main: #1e6b5c;
+      --warn: #b84545;
+      --gold: #8a6a12;
+      --card: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 560px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 22px 16px 34px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 22px 0 8px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 8px 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .metric, .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    }
+    .metric b {
+      display: block;
+      margin-top: 4px;
+      font-size: 22px;
+      color: var(--main);
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .card {
+      margin: 12px 0;
+      white-space: pre-wrap;
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      min-height: 48px;
+      margin: 9px 0 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 650;
+      text-align: left;
+      padding: 12px 14px;
+    }
+    button.primary {
+      background: var(--main);
+      color: #fff;
+      border-color: var(--main);
+      text-align: center;
+    }
+    button.sub {
+      color: var(--main);
+      text-align: center;
+    }
+    .tag {
+      display: inline-block;
+      margin: 4px 6px 4px 0;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #e9f2ef;
+      color: var(--main);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .ok { color: var(--main); }
+    .ng { color: var(--warn); }
+    .gold { color: var(--gold); }
+    .install {
+      display: none;
+      position: sticky;
+      bottom: 12px;
+      z-index: 3;
+      box-shadow: 0 8px 22px rgba(30,107,92,.22);
+    }
+  </style>
+</head>
+<body>
+  <main id="app"></main>
+  <script>
+    const DAY = 86400000;
+    const app = document.getElementById("app");
+    const storeKey = "toeic-ai-coach-web-v1";
+    let current = null;
+    let startedAt = 0;
+    let stats = JSON.parse(localStorage.getItem(storeKey) || "{}");
+    let installPrompt = null;
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+    window.addEventListener("beforeinstallprompt", e => {
+      e.preventDefault();
+      installPrompt = e;
+      const btn = document.getElementById("installBtn");
+      if (btn) btn.style.display = "block";
+    });
+
+    const bank = [
+      q("p1-1",1,"写真描写","Scene: A man is standing beside a printer and holding several documents.","","Which statement best describes the scene?",["A man is holding papers near a printer.","A woman is watering plants.","People are eating outdoors.","A mechanic is repairing a car."],0,["場面と一致します。","植物は出てきません。","食事の話はありません。","車の修理はありません。"],"見た内容と同じことを言っている文を選びます。"),
+      q("p2-1",2,"疑問詞応答","","When will the shipment arrive? Tomorrow afternoon. In the conference room. Because it was expensive.","Choose the best response.",["Tomorrow afternoon.","In the conference room.","Because it was expensive."],0,["When なので時間を答える文が正解です。","場所の答えです。","理由の答えです。"],"When は「いつ」。時間の答えを探します。"),
+      q("p2-2",2,"提案応答","","Why don't we review the contract before lunch? Yes, that sounds good. It is on the second floor. I bought it yesterday.","Choose the best response.",["Yes, that sounds good.","It is on the second floor.","I bought it yesterday."],0,["提案に賛成しているので自然です。","場所の答えで不自然です。","買った時の話で不自然です。"],"Why don't we は「一緒にしよう」。賛成・反対の返事を選びます。"),
+      q("p3-1",3,"会話要点","","Woman: The client moved Friday's meeting to 10 a.m. Man: Thanks. I will update the calendar and reserve Room B. Woman: Please send the new agenda too.","What will the man do?",["Update the calendar and reserve a room.","Cancel the client meeting.","Print the invoices.","Call the cafeteria."],0,["男性がそう言っています。","中止ではなく変更です。","請求書は出てきません。","食堂は出てきません。"],"男の人がこれからやることを聞いています。言ったことを選びます。"),
+      q("p4-1",4,"説明文要点","","Attention, employees. The north elevator will be out of service from 9 a.m. to noon on Tuesday. Please use the stairs or the south elevator during this time.","What is the announcement mainly about?",["An elevator repair","A parking rule","A lunch menu","A new employee"],0,["エレベーターが使えない案内なので正解です。","駐車場の話ではありません。","昼食の話ではありません。","新入社員の話ではありません。"],"何の案内かを聞いています。一番多く話されたテーマを選びます。"),
+      q("p5-1",5,"品詞","","","The new software can process orders more ------- than the old system.",["quick","quickly","quicker","quickness"],1,["形容詞なので process を説明できません。","動詞 process を説明する副詞なので正解です。","比較級ですが more と重なり不自然です。","名詞なので入りません。"],"動き方を説明する言葉は副詞です。"),
+      q("p5-2",5,"時制","","","The sales team ------- the proposal before the deadline yesterday.",["submit","submits","submitted","will submit"],2,["現在形では yesterday と合いません。","三単現で主語とも時制とも合いません。","yesterday なので過去形が正解です。","未来形なので yesterday と合いません。"],"yesterday は昨日。過去の形を選びます。"),
+      q("p6-1",6,"文脈","Email\nThank you for applying for the marketing assistant position. We have reviewed your resume and would like to ------- an interview next week. Please reply with your available times.","","Choose the best word for the blank.",["schedule","cancel","ignore","repair"],0,["面接を予定する、という自然な流れです。","応募者に面接を取り消す流れではありません。","無視するは不自然です。","修理する対象ではありません。"],"応募後に面接を入れたい、という流れです。"),
+      q("p7-1",7,"読解","Memo\nStarting July 1, all expense reports must be submitted through the new online system. Paper forms will no longer be accepted after June 30.","","What will change on July 1?",["Employees must use an online system.","Paper forms will become cheaper.","The office will move.","Reports will no longer be needed."],0,["本文に online system とあります。","安くなる話はありません。","引っ越しはありません。","報告不要ではなく提出方法の変更です。"],"7月1日から何が変わるかを本文から探します。"),
+      q("p7-2",7,"複数文書","Message 1\nMika: Can you send the budget file by 3 p.m.?\nMessage 2\nKen: I can send it by 2:30 after the finance team approves it.","","When does Ken expect to send the file?",["By 2:30","At 3:30","Tomorrow morning","After the meeting next week"],0,["Ken が by 2:30 と言っています。","3:30 ではありません。","明日の朝ではありません。","来週の会議後ではありません。"],"Kenの返事にある時間を選びます。")
+    ];
+
+    function q(id, part, skill, context, spoken, prompt, choices, answer, explanations, simple) {
+      return { id, part, skill, context, spoken, prompt, choices, answer, explanations, simple };
+    }
+    function save() { localStorage.setItem(storeKey, JSON.stringify(stats)); }
+    function stat(id) { return stats[id] || { attempts:0, correct:0, streak:0, totalMs:0, nextReview:0 }; }
+    function totalAttempts(){ return Object.values(stats).reduce((n,s)=>n+s.attempts,0); }
+    function totalCorrect(){ return Object.values(stats).reduce((n,s)=>n+s.correct,0); }
+    function totalMs(){ return Object.values(stats).reduce((n,s)=>n+s.totalMs,0); }
+    function pct(a,b){ return Math.round(100*a/Math.max(1,b)) + "%"; }
+    function partName(p){ return ["","写真描写","応答","会話","説明文","短文穴埋め","長文穴埋め","読解"][p]; }
+    function due(){ const now = Date.now(); return bank.filter(x => !stats[x.id] || stats[x.id].nextReview <= now); }
+    function weakestSkill(){
+      const map = {};
+      bank.forEach(x => {
+        const s = stats[x.id];
+        if (!s || !s.attempts) return;
+        map[x.skill] ||= [0,0];
+        map[x.skill][0] += s.correct;
+        map[x.skill][1] += s.attempts;
+      });
+      let weak = "品詞", low = 2;
+      Object.keys(map).forEach(k => {
+        const r = map[k][0] / Math.max(1, map[k][1]);
+        if (r < low) { low = r; weak = k; }
+      });
+      return weak;
+    }
+    function pickNext(){
+      const d = due();
+      if (d.length) return d[0];
+      const weak = weakestSkill();
+      return bank.find(x => x.skill === weak) || bank[0];
+    }
+    function aiQuestion(){
+      const weak = weakestSkill();
+      if (weak === "時制") return q("ai-tense",5,"時制","","","By the time the client arrives, we ------- the report.",["will finish","finished","will have finished","are finishing"],2,["未来のある時点までの完了を表せません。","過去の話になってしまいます。","未来の時点までに終わっている、という意味で正解です。","進行中の意味になり、完了が弱いです。"],"お客さんが来る時には、もう終わっている。だから未来完了を使います。");
+      if (weak === "読解") return q("ai-reading",7,"読解","Notice\nThe cafeteria will close at 2 p.m. on Friday for equipment inspection. Normal hours will resume on Monday.","","Why will the cafeteria close early?",["For staff training","For equipment inspection","For a holiday party","For menu changes"],1,["training とは書かれていません。","本文に equipment inspection とあるので正解です。","party とは書かれていません。","menu changes とは書かれていません。"],"本文に同じ意味の言葉がある選択肢を選びます。");
+      return q("ai-pos",5,"品詞","","","The manager gave a ------- explanation of the new policy.",["clear","clearly","clarify","cleared"],0,["名詞 explanation を説明する形容詞なので正解です。","clearly は副詞で、名詞を直接説明しません。","clarify は動詞で、この場所には入りません。","cleared は過去形・過去分詞で意味が合いません。"],"説明がどんなものかを言う場所なので「はっきりした」という形容詞を選びます。");
+    }
+
+    function render(html){ app.innerHTML = html; window.scrollTo(0,0); }
+    function home(){
+      render(`
+        <h1>TOEIC AI Coach</h1>
+        <p>450点から800点へ。弱点を見つけて、忘れかけた頃に復習します。</p>
+        <div class="grid">
+          <div class="metric"><span>今日の復習</span><b>${due().length}問</b></div>
+          <div class="metric"><span>正答率</span><b>${pct(totalCorrect(), totalAttempts())}</b></div>
+          <div class="metric"><span>学習時間</span><b>${Math.round(totalMs()/60000)}分</b></div>
+          <div class="metric"><span>最優先</span><b>${weakestSkill()}</b></div>
+        </div>
+        <button class="primary" onclick="start(pickNext())">復習から始める</button>
+        <button onclick="start(aiQuestion())">弱点AIドリル</button>
+        <button onclick="parts()">Part別に練習</button>
+        <button onclick="analytics()">分析を見る</button>
+        <button id="installBtn" class="primary install" onclick="installApp()">ホーム画面に追加</button>
+        <div class="card">対応形式: Part 1 写真描写 / Part 2 応答 / Part 3 会話 / Part 4 説明文 / Part 5 短文穴埋め / Part 6 長文穴埋め / Part 7 読解\n\n公式問題は著作権があるため転載せず、形式に近いオリジナル問題で作成しています。</div>
+        <div class="card">スマホアプリ風に使う方法\nAndroid Chromeで開き、メニューから「ホーム画面に追加」または表示される追加ボタンを押してください。追加後は通常アプリのように起動できます。</div>
+      `);
+      if (installPrompt) document.getElementById("installBtn").style.display = "block";
+    }
+    async function installApp(){
+      if (!installPrompt) {
+        alert("ブラウザのメニューから「ホーム画面に追加」を選んでください。");
+        return;
+      }
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      const btn = document.getElementById("installBtn");
+      if (btn) btn.style.display = "none";
+    }
+    function parts(){
+      render(`<h1>練習するPart</h1>${[1,2,3,4,5,6,7].map(p=>`<button onclick="start(bank.find(x=>x.part===${p}))">Part ${p} ${partName(p)}</button>`).join("")}<button class="sub" onclick="home()">戻る</button>`);
+    }
+    function speak(text){
+      if (!("speechSynthesis" in window)) return alert("このブラウザでは音声再生に対応していません。");
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-US";
+      u.rate = .88;
+      speechSynthesis.speak(u);
+    }
+    function start(x){
+      current = x;
+      startedAt = Date.now();
+      render(`
+        <h1>Part ${x.part} ${partName(x.part)}</h1>
+        <span class="tag">${x.skill}</span>
+        ${x.context ? `<div class="card">${x.context}</div>` : ""}
+        ${x.spoken ? `<button class="primary" onclick="speak(current.spoken)">音声を再生</button><p>本番に近づけるなら、先に音声を聞いてから設問を見てください。</p>` : ""}
+        <div class="card">${x.prompt}</div>
+        ${x.choices.map((c,i)=>`<button onclick="answer(${i})">${String.fromCharCode(65+i)}. ${c}</button>`).join("")}
+        <button class="sub" onclick="home()">中断して戻る</button>
+      `);
+    }
+    function answer(i){
+      const ok = i === current.answer;
+      const s = stat(current.id);
+      s.attempts++;
+      s.totalMs += Date.now() - startedAt;
+      if (ok) { s.correct++; s.streak++; } else { s.streak = 0; }
+      const days = [0,1,3,7,14,30,60];
+      s.nextReview = Date.now() + days[Math.min(s.streak, days.length-1)] * DAY;
+      stats[current.id] = s;
+      save();
+      render(`
+        <h1 class="${ok ? "ok" : "ng"}">${ok ? "正解" : "不正解"}</h1>
+        <p>正解: ${String.fromCharCode(65+current.answer)} / 次回復習: ${reviewLabel(s.nextReview)}</p>
+        ${current.choices.map((c,n)=>`<div class="card">${String.fromCharCode(65+n)}. ${c}\n${current.explanations[n]}</div>`).join("")}
+        <div class="card"><b>小学生向けまとめ</b>\n${current.simple}</div>
+        <button class="primary" onclick="start(pickNext())">次の問題</button>
+        <button class="sub" onclick="home()">ホーム</button>
+      `);
+    }
+    function reviewLabel(t){
+      const d = Math.max(0, Math.round((t - Date.now()) / DAY));
+      return d === 0 ? "今日" : `${d}日後`;
+    }
+    function analytics(){
+      const byPart = {};
+      const bySkill = {};
+      bank.forEach(x => {
+        const s = stats[x.id];
+        if (!s || !s.attempts) return;
+        byPart[x.part] ||= [0,0];
+        byPart[x.part][0] += s.correct; byPart[x.part][1] += s.attempts;
+        bySkill[x.skill] ||= [0,0];
+        bySkill[x.skill][0] += s.correct; bySkill[x.skill][1] += s.attempts;
+      });
+      render(`
+        <h1>弱点分析</h1>
+        <div class="grid">${[1,2,3,4,5,6,7].map(p=>`<div class="metric"><span>Part ${p}</span><b>${byPart[p] ? pct(byPart[p][0], byPart[p][1]) : "未学習"}</b></div>`).join("")}</div>
+        <h2>改善優先度</h2>
+        <div class="card">今の最優先: ${weakestSkill()}\n450点台から800点を狙うなら、まずPart 5/6の文法即答とPart 7の時間管理を厚くするのが現実的です。</div>
+        ${Object.keys(bySkill).map(k=>`<div class="metric"><span>${k}</span><b>${pct(bySkill[k][0], bySkill[k][1])}</b></div>`).join("") || `<p>まだ学習データがありません。</p>`}
+        <button class="sub" onclick="home()">戻る</button>
+      `);
+    }
+    home();
+  </script>
+</body>
+</html>
